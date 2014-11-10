@@ -1,0 +1,2 @@
+javac Demo.java
+java Demo
