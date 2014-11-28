@@ -19,15 +19,7 @@ var checkLogin = function(postData, callback){
 	console.log("#post data:\n"+postData)
 	var reqToAnysdk=require("http").request(options,function(resFromAnysdk){
 			resFromAnysdk.setEncoding("utf8");
-			resFromAnysdk.on("data",function(data){
-				console.log("#return data:\n"+data);
-				resJson = JSON.parse(data);
-			});
-			if (resJson && (resJson.status=="ok")) {
-				callback("登录成功");
-			}else{
-				callback("登录失败");
-			}
+			
 	});
 
 	reqToAnysdk.write(postData);
