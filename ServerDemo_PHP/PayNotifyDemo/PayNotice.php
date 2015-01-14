@@ -10,13 +10,17 @@ file_put_contents(LOG_FILE, "#" . date('Y-m-d H:i:s') . "\n#AnySDK支付通知HT
 
 checkAnySDKSever();
 $privateKey = "696064B29E9A0B7DDBD6FCB88F34A555";
+$enhancedKey = 'OGM3ODFkNDRhYjUzYjM4ZmUzZjk';
+
 $params = $_POST;
-//注意$_POST数据如果服务器没有自动处理urldecode，请做一次urldecode(参考rfc1738标准)处理
+//注意：$_POST数据如果服务器没有自动处理urldecode，请做一次urldecode(参考rfc1738标准)处理
 //foreach ($params as $key => $value) {
 //        $params[$key] = urldecode($value);
 //}
 
-if (checkSign($params, $privateKey)) {
+//注意：如果没有增强密钥的游戏只需要通用验签即可，即只需要checkSign
+//if (checkSign($params, $privateKey)) {
+if (checkSign($params, $privateKey) && checkEnhancedSign($params, $enhancedKey)) {
         checkAmount($params);
         // @todo 验证成功，游戏服务器处理逻辑
         echo "ok";
@@ -61,7 +65,7 @@ function getProductAmount($productId) {
 }
 
 /**
- * 验签
+ * 通用验签
  * @param array $data 接收到的所有请求参数数组，通过$_POST可以获得。注意data数据如果服务器没有自动解析，请做一次urldecode(参考rfc1738标准)处理
  * @param array $privateKey AnySDK分配的游戏privateKey
  * @return bool
@@ -71,6 +75,8 @@ function checkSign($data, $privateKey) {
                 return false;
         }
         $sign = $data['sign'];
+        //sign 不参与签名
+        unset($data['sign']);        
         $_sign = getSign($data, $privateKey);
         if ($_sign != $sign) {
                 return false;
@@ -79,16 +85,33 @@ function checkSign($data, $privateKey) {
 }
 
 /**
+ * 增强验签
+ * @param type $data
+ * @param type $enhancedKey
+ * @return boolean
+ */
+function checkEnhancedSign($data, $enhancedKey) {
+        if (empty($data) || !isset($data['enhanced_sign']) || empty($enhancedKey)) {
+                return false;
+        }
+        $enhancedSign = $data['enhanced_sign'];
+        //sign及enhanced_sign 不参与签名
+        unset($data['sign'], $data['enhanced_sign']);
+        $_enhancedSign = getSign($data, $enhancedKey);
+        if ($_enhancedSign != $enhancedSign) {
+                return false;
+        }
+        return true;
+}
+
+/**
  * 计算签名
  * @param array $data
- * @param string $privateKey
+ * @param string $key
  * @return string
  */
-function getSign($data, $privateKey) {
+function getSign($data, $key) {
         file_put_contents(LOG_FILE, "#\n#原始数组:\n" . print_r($data, true) . "\n", FILE_APPEND);
-
-        //sign 不参与签名
-        unset($data['sign']);
 
         //数组按key升序排序        
         ksort($data);
@@ -103,8 +126,8 @@ function getSign($data, $privateKey) {
         file_put_contents(LOG_FILE, "#\n#第一次md5并小写:\n" . print_r($theFirstMd5String, true) . "\n", FILE_APPEND);
 
         //追加privatekey
-        $addPrivateKeyString = $theFirstMd5String . $privateKey;
-        file_put_contents(LOG_FILE, "#\n#追加privatekey:\n" . print_r($addPrivateKeyString, true) . "\n", FILE_APPEND);
+        $addPrivateKeyString = $theFirstMd5String . $key;
+        file_put_contents(LOG_FILE, "#\n#追加密钥后:\n" . print_r($addPrivateKeyString, true) . "\n", FILE_APPEND);
 
         //第二次md5并转换成小写
         $theLastMd5String = strtolower(md5($addPrivateKeyString));
