@@ -24,9 +24,10 @@ var checkLogin = function(postData, callback){
 				resJson = JSON.parse(data);
 			});
 			if (resJson && (resJson.status=="ok")) {
-				callback("登录成功");
+				resJson.ext = "登陆验证成功";
+				callback(JSON.stringify(resJson));
 			}else{
-				callback("登录失败");
+				callback(JSON.stringify(resJson));
 			}
 	});
 
