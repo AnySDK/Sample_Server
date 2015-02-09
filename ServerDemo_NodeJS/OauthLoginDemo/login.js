@@ -22,13 +22,14 @@ var checkLogin = function(postData, callback){
 			resFromAnysdk.on("data",function(data){
 				console.log("#return data:\n"+data);
 				resJson = JSON.parse(data);
+				if (resJson && (resJson.status=="ok")) {
+					resJson.ext = "登陆验证成功";
+					callback(JSON.stringify(resJson));
+				}else{
+					callback(JSON.stringify(resJson));
+				}				
 			});
-			if (resJson && (resJson.status=="ok")) {
-				resJson.ext = "登陆验证成功";
-				callback(JSON.stringify(resJson));
-			}else{
-				callback(JSON.stringify(resJson));
-			}
+
 	});
 
 	reqToAnysdk.write(postData);
