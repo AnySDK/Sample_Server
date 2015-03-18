@@ -51,13 +51,13 @@ var get_sign = function(post,sign_key){
 
 	for(key in post){
 		console.log("Key:"+key+"\tVaule:"+post[key]);
-		keys[key] = key;
+		keys.push(key);
 		
 	}
 	keys = keys.sort();
 	var paramString = '';
-	for(newkey in keys){
-		paramString += post[newkey];
+	for(i in keys){
+		paramString += post[keys[i]];
 	}
 	console.log("拼接的字符串:"+paramString);
 	console.log("第一次md5:"+my_md5(paramString));
