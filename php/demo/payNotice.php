@@ -3,6 +3,12 @@
 include '../AnySDK.config.php';
 include '../AnySDK.Sdk.class.php';
 
+/**
+ * 如果你想配合dev后台的“模拟通知游服”功能进行内网调试，请取消注释此响应头设置代码。
+ * 
+header("Access-Control-Allow-Origin: http://dev.anysdk.com");
+ */
+
 $payment_params = $_REQUEST;
 $anysdk = new Sdk_AnySDK(ANYSDK_ENHANCED_KEY, ANYSDK_PRIVATE_KEY);
 
@@ -26,7 +32,7 @@ $anysdk->checkIpWhiteList() or die(Sdk_AnySDK::PAYMENT_RESPONSE_FAIL . 'ip');
 $anysdk->setPaymentSignCheckMode(Sdk_AnySDK::PAYMENT_SIGN_CHECK_MODE_BOTH);
 $check_sign = $anysdk->checkPaymentSign($payment_params);
 if (!$check_sign) {
-        echo $anysdk->getDebugInfo();
+        echo $anysdk->getDebugInfo(), "\n=====我是分割线=====\n";
         die(Sdk_AnySDK::PAYMENT_RESPONSE_FAIL . 'sign_error');
 }
 
@@ -52,5 +58,5 @@ $channel_order_id = $anysdk->getPaymentChannelOrderId();
 $private_data = $anysdk->getPaymentPrivateData();
  */
 
-        echo $anysdk->getDebugInfo();
+echo $anysdk->getDebugInfo(), "\n=====我是分割线=====\n";
 echo Sdk_AnySDK::PAYMENT_RESPONSE_OK;

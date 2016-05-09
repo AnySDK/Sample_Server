@@ -3,11 +3,12 @@
 /**
  * AnySDK服务端SDK for PHP
  * 
- * @author    李播<libo@anysdk.com>
- * @date        2016-01-11
- * @version  2.0.0
+ * @author       李播<libo@anysdk.com>
+ * @date         2016-01-11
+ * @version      2.1.0
  * @link         http://docs.anysdk.com/OauthLogin         统一登录验证
- * @link         http://docs.anysdk.com/PaymentNotice  订单支付通知
+ * @link         http://docs.anysdk.com/PaymentNotice      订单支付通知
+ * @link         http://docs.anysdk.com/AdTracking         广告效果追踪
  */
 class Sdk_AnySDK {
 
@@ -35,11 +36,19 @@ class Sdk_AnySDK {
 	 */
 	const LOGIN_CHECK_URL = 'http://oauth.anysdk.com/api/User/LoginOauth/';
 
+        /**
+         * AnySDK广告效果追踪数据报送接口
+         * @var String
+         */
+        const ADTRACKING_REPORT_URL = 'http://pay.anysdk.com/v5/AdTracking/Submit/';
+        
 	/**
 	 * ===================================================================================
 	 * 将字符常量定义成代码常量
 	 * 主要是一些字段名称
 	 */
+        const FIELD_TOKEN  = 'token';
+        const FIELD_METHOD = 'method';
 	const FIELD_STATUS = 'status';
 	const FIELD_COMMON = 'common';
 	const FIELD_COMMON_CHANNEL = 'channel';
@@ -81,11 +90,20 @@ class Sdk_AnySDK {
 	const PAYMENT_RESPONSE_OK = 'ok';
 	const PAYMENT_RESPONSE_FAIL = 'fail.';
 	const PAYMENT_STATUS_SUCCESS = 1;
+        const ADTRACKING_REPORT_STATUS_OK = 'ok';
+        const ADTRACKING_REPORT_STATUS_FAIL = 'fail';
 	const HTTP_METHOD_POST = 'POST';
 	const HTTP_METHOD_GET = 'GET';
+        
+        /**
+         * 广告效果追踪报送接口常量
+         * @var String 
+         */
+        const ADTRACKING_METHOD_PAYMENT = 'Payment';
 
 	private $_debugMode = self::DEBUG_MODE_OFF;
 	private $_loginCheckUrl = self::LOGIN_CHECK_URL;
+        private $_adTrackingReportUrl = self::ADTRACKING_REPORT_URL;
 	private $_lastError = '';
 	private $_privateKey = '';
 	private $_enhancedKey = '';
@@ -99,6 +117,13 @@ class Sdk_AnySDK {
 	 * @var type 
 	 */
 	private $_loginStatus = FALSE;
+
+	/**
+	 * 广告效果追踪报送结果
+	 * 
+	 * @var type 
+	 */
+	private $_adTrackingReportStatus = FALSE;
 
 	/**
 	 * 登录验证成功之后将验证结果以数组形式存储起来
@@ -565,6 +590,14 @@ class Sdk_AnySDK {
 		$this->_loginCheckUrl = $loginCheckUrl;
 		$this->_appendDebugInfo(__METHOD__ . ': init _loginCheckUrl = ' . $this->_loginCheckUrl);
 	}
+        
+        /**
+         * 设置广告效果追踪数据报送地址
+         */
+        public function setAdTrackingReportUrl ($adTrackingReportUrl = self::ADTRACKING_REPORT_URL) {
+                $this->_adTrackingReportUrl = $adTrackingReportUrl;
+                $this->_appendDebugInfo(__METHOD__ . ': init _adTrackingReportUrl = ' . $this->_adTrackingReportUrl);
+        }
 
 	/**
 	 * 登录转发的时候注入private_key参数
@@ -663,6 +696,83 @@ class Sdk_AnySDK {
 		return $http_response;
 	}
 
+        /**
+         * 广告效果追踪数据报送结果
+         * @return boolean
+         */
+        public function getAdTrackingReportStatus () {
+                return $this->_adTrackingReportStatus;
+        }
+        
+        /**
+         * 执行广告效果追踪数据报送
+         * @param array $data
+         * @param type $method
+         * @return Mixed String/Boolean
+         */
+        public function adTrackingReport (Array $data = array(), $method = '') {
+                if (empty($method)) {
+                        $msg = __METHOD__ . ': need paramter $method for report';
+			$this->_lastError = $msg;
+			$this->_appendDebugInfo($msg);
+                        
+                        return FALSE;
+                }
+                
+                $data_encrypt = urlencode(base64_encode(json_encode($data)));
+                $token = $this->getAdTrackingToken($data, ANYSDK_PRIVATE_KEY);
+                
+                $postFields = array(
+                    self::FIELD_DATA   => $data_encrypt,
+                    self::FIELD_TOKEN  => $token,
+                    self::FIELD_METHOD => $method
+                );
+                
+		$http_response = $this->_httpRequest($this->_adTrackingReportUrl, $postFields);
+
+		if (empty($http_response)) {
+                        $msg = __METHOD__ . ': remote server response empty. url: ' . $this->_adTrackingReportUrl;
+			$this->_lastError = $msg;
+			$this->_appendDebugInfo($msg);
+                        
+			return FALSE;
+		}
+
+		$res_arr = json_decode($http_response, TRUE);
+
+		if (empty($res_arr)) {
+			$msg = __METHOD__ . ': remote server response non-json data';
+			$this->_lastError = $msg;
+			$this->_appendDebugInfo($msg);
+			return FALSE;
+		}
+
+		/**
+		 * 设置验证结果状态，保存验证结果数组
+		 */
+		if (isset($res_arr[self::FIELD_STATUS]) && $res_arr[self::FIELD_STATUS] === self::ADTRACKING_REPORT_STATUS_OK) {
+			$this->_adTrackingReportStatus = TRUE;
+			$this->_adTrackingReportResponse = $res_arr;
+		}
+
+                return $http_response;
+        }
+        
+        /**
+         * 计算AdTracking签名
+         * 
+         * @param type $data
+         * @return string 签名
+         */
+        protected function getAdTrackingToken ($data, $key) {
+                //数组按key升序排序
+                ksort($data);
+                //将数组中的值不加任何分隔符合并成字符串
+                $string = implode('', $data);
+                //做一次md5并转换成小写，末尾追加游戏的privateKey，最后再次做md5并转换成小写
+                return strtolower(md5(strtolower(md5($string)) . $key));
+        }
+        
 	/**
 	 * 验证支付通知签名
 	 * 
@@ -701,7 +811,7 @@ class Sdk_AnySDK {
 		curl_setopt($ch, CURLOPT_URL, $url);
 		$this->_appendDebugInfo(__METHOD__ . ': curl url(' . $url . ')');
 
-		curl_setopt($ch, CURLOPT_USERAGENT, 'AnySDK.Sdk.class.php.v2.0.0');
+		curl_setopt($ch, CURLOPT_USERAGENT, 'AnySDK.Sdk.class.php.v2.1.0');
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->_httpConnectTimeout);
 		curl_setopt($ch, CURLOPT_TIMEOUT, $this->_httpTimeout);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
