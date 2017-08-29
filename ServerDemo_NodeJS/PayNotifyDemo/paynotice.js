@@ -17,7 +17,7 @@ var enhanced_key = 'N2VlYzQ1MWQ3ZDhhOTYyYmE5YTk';
 var my_md5 = function(data){
 	//中文字符处理
 	data = new Buffer(data).toString("binary");
-	return crypto.createHash('md5').update(data).digest('hex').toLowerCase();
+	return crypto.createHash('md5').update(data, "binary").digest('hex').toLowerCase();
 }
 
 //通用验签
@@ -57,6 +57,9 @@ var get_sign = function(post,sign_key){
 	keys = keys.sort();
 	var paramString = '';
 	for(i in keys){
+		if( !post[keys[i]] ) {
+		    continue;
+		}
 		paramString += post[keys[i]];
 	}
 	console.log("拼接的字符串:"+paramString);
